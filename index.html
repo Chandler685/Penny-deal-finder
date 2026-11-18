@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Penny Deal Finder</title>
+<style>
+* {box-sizing:border-box}
+body {
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#0e1424;
+  color:white;
+}
+header {
+  background:linear-gradient(135deg,#253e70,#10192e);
+  padding:28px 18px;
+  text-align:center;
+}
+h1 {color:#ffda54;margin:10px 0}
+p {line-height:1.5;color:#bdc9de}
+main {max-width:800px;margin:auto;padding:16px}
+.card {
+  background:#1b2942;
+  padding:18px;
+  border-radius:16px;
+  margin-bottom:16px;
+}
+input,select,button {
+  width:100%;
+  padding:13px;
+  margin:7px 0;
+  border-radius:9px;
+  font-size:16px;
+}
+input,select {
+  background:#101a2e;
+  border:1px solid #53637e;
+  color:white;
+}
+button {
+  background:#ffda54;
+  border:0;
+  color:#151515;
+  font-weight:bold;
+}
+.deal {
+  background:#101a2e;
+  border:1px solid #43516a;
+  padding:15px;
+  border-radius:12px;
+  margin:12px 0;
+}
+.penny {
+  border:2px solid gold;
+  background:#322b17;
+}
+.price {
+  font-size:28px;
+  color:#ffda54;
+  font-weight:bold;
+}
+small {color:#bdc9de}
+</style>
+</head>
+<body>
+
+<header>
+<h1>💰 Penny Deal Finder</h1>
+<p>Find and track incredible markdown deals!</p>
+<p>📍 ZIP Code: 29718</p>
+</header>
+
+<main>
+
+<div class="card">
+<h2>🔎 Filter Deals</h2>
+<select id="filter" onchange="showDeals()">
+<option value="All">All Stores</option>
+<option value="Lowe's">Lowe's</option>
+<option value="Home Depot">Home Depot</option>
+<option value="Walmart">Walmart</option>
+</select>
+
+<select id="maxPrice" onchange="showDeals()">
+<option value="5">Deals Under $5</option>
+<option value="1">Deals Under $1</option>
+<option value="0.01">Penny Deals Only</option>
+</select>
+</div>
+
+<div class="card">
+<h2>➕ Add a Deal</h2>
+<form id="dealForm">
+
+<input id="item" placeholder="Product name" required maxlength="120">
+
+<select id="store">
+<option>Lowe's</option>
+<option>Home Depot</option>
+<option>Walmart</option>
+</select>
+
+<input id="price" type="number"
+min="0.01" max="5" step="0.01"
+placeholder="Price (example: 0.01)" required>
+
+<input id="sku" placeholder="SKU or UPC number" maxlength="80">
+
+<input id="location" placeholder="Store location" maxlength="100">
+
+<select id="status">
+<option>Unverified lead</option>
+<option>Receipt or shelf tag</option>
+<option>Confirmed at checkout</option>
+</select>
+
+<button type="submit">💾 Save Deal</button>
+</form>
+</div>
+
+<div class="card">
+<h2>🔥 Markdown Deals</h2>
+<p id="count"></p>
+<div id="deals"></div>
+</div>
+
+<div class="card">
+<h2>🛒 Retailer Websites</h2>
+<p><a href="https://www.lowes.com" target="_blank" rel="noopener noreferrer" style="color:#ffda54">Lowe's</a></p>
+<p><a href="https://www.homedepot.com" target="_blank" rel="noopener noreferrer" style="color:#ffda54">Home Depot</a></p>
+<p><a href="https://www.walmart.com" target="_blank" rel="noopener noreferrer" style="color:#ffda54">Walmart</a></p>
+<small>These links do not confirm local markdown prices.</small>
+</div>
+
+<div class="card">
+<h2>ℹ️ Important</h2>
+<p>This first version is a personal deal tracker.
+It does not automatically search retailer inventories.
+Prices and availability must be checked at each store.</p>
+<p>Deals are saved only in this browser on this device.
+Clearing browser data may erase them.</p>
+</div>
+
+</main>
+
+<script>
+const storageKey = "pennyDeals";
+let deals = [];
+
+try {
+  const saved = JSON.parse(
+    localStorage.getItem(storageKey) || "[]"
+  );
+  if (Array.isArray(saved)) deals = saved;
+} catch (e) {
+  deals = [];
+}
+
+function safe(text) {
+  return String(text).replace(/[&<>"']/g, c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  })[c]);
+}
+
+document.getElementById("dealForm")
+.addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const price = Number(
+    document.getElementById("price").value
+  );
+
+  if (!Number.isFinite(price) ||
+      price < 0.01 || price > 5) {
+    alert("Enter a price between $0.01 and $5.");
+    return;
+  }
+
+  const deal = {
+    item:document.getElementById("item").value.trim(),
+    store:document.getElementById("store").value,
+    price:Math.round(price * 100) / 100,
+    sku:document.getElementById("sku").value.trim(),
+    location:document.getElementById("location").value.trim(),
+    status:document.getElementById("status").value
+  };
+
+  deals.push(deal);
+  localStorage.setItem(storageKey, JSON.stringify(deals));
+  this.reset();
+  showDeals();
+});
+
+function showDeals() {
+  const store = document.getElementById("filter").value;
+  const max = Number(
+    document.getElementById("maxPrice").value
+  );
+
+  const filtered = deals.filter(d =>
+    (store === "All" || d.store === store) &&
+    d.price <= max
+  ).sort((a,b) => a.price - b.price);
+
+  document.getElementById("count").textContent =
+    filtered.length + " deals found";
+
+  const container = document.getElementById("deals");
+  container.innerHTML = "";
+
+  if (!filtered.length) {
+    container.textContent = "No saved deals yet.";
+    return;
+  }
+
+  filtered.forEach(d => {
+    const card = document.createElement("div");
+    card.className = "deal" +
+      (d.price === 0.01 ? " penny" : "");
+
+    card.innerHTML =
+      '<div class="price">' +
+      (d.price === 0.01 ? "⭐ PENNY DEAL " : "") +
+      "$" + d.price.toFixed(2) +
+      "</div><h3>" + safe(d.item) +
+      "</h3><p>" + safe(d.store) +
+      " | " + safe(d.location || "Location unknown") +
+      "</p><small>SKU: " + safe(d.sku || "N/A") +
+      " | " + safe(d.status) + "</small>";
+
+    container.appendChild(card);
+  });
+}
+
+showDeals();
+</script>
+
+</body>
+</html>
+     
