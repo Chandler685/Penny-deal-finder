@@ -238,7 +238,72 @@ function showDeals() {
   });
 }
 
-showDeals();
+async function refreshDeals() {
+  const status = document.getElementById("feedStatus");
+
+  try {
+    const response = await fetch(
+      "./deals.json?t=" + Date.now(),
+      { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+      if (status) {
+        status.textContent =
+          "No automatic deal feed connected yet.";
+      }
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid deal feed");
+    }
+
+    const feedDeals = data.filter(d =>
+      d &&
+      typeof d.item === "string" &&
+      ["Home Depot", "Lowe's", "Walmart"]
+        .includes(d.store) &&
+      Number.isFinite(Number(d.price)) &&
+      Number(d.price) >= 0.01 &&
+      Number(d.price) <= 5
+    ).map(d => ({
+      ...d,
+      price: Number(d.price)
+    }));
+
+    const saved = JSON.parse(
+      localStorage.getItem(storageKey) || "[]"
+    );
+
+    deals = [
+      ...feedDeals,
+      ...(Array.isArray(saved) ? saved : [])
+    ];
+
+    showDeals();
+
+    if (status) {
+      status.textContent =
+        "Feed checked: " +
+        new Date().toLocaleTimeString();
+    }
+
+  } catch (error) {
+    if (status) {
+      status.textContent =
+        "Automatic feed unavailable.";
+    }
+  }
+}
+
+refreshDeals();
+
+// Check for updated listings every 5 minutes
+setInterval(refreshDeals, 5 * 60 * 1000);
+
 </script>
 
 </body>
