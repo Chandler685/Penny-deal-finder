@@ -1,0 +1,36 @@
+
+name: Penny Deal Finder Auto Update
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-deals:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Check deal feed
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+
+          with open("deals.json", "r") as f:
+              deals = json.load(f)
+
+          if not isinstance(deals, list):
+              raise ValueError("Invalid deal feed")
+
+          print("Feed checked at:",
+                datetime.now(timezone.utc))
+          print("Deals currently saved:", len(deals))
+          print("Home Depot scanner not connected yet.")
+          PY
